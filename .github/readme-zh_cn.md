@@ -16,6 +16,10 @@
 
 </div>
 
+关于此 Fork (About This Fork) 本项目是 SillyTavern/SillyTavern 的一个fork版本。
+
+本项目的所有修改和分发均遵循原始项目的 AGPL-3.0 许可证。你可以在仓库根目录的 LICENSE 文件中查看许可证全文。
+
 ---
 
 SillyTavern 为众多 LLM API（KoboldAI/CPP、Horde、NovelAI、Ooba、Tabby、OpenAI、OpenRouter、Claude、Mistral 等）提供统一界面，拥有移动设备友好的布局、视觉小说模式、Automatic1111 & ComfyUI API 图像生成集成、TTS、世界书（lorebooks）、可自定义的 UI、自动翻译、超乎您想象的丰富 Prompt 选项，以及通过第三方扩展实现的无限增长潜力。
