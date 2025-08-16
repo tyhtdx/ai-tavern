@@ -14,6 +14,10 @@ English | [German](readme-de_de.md) | [中文](readme-zh_cn.md) | [繁體中文]
 </div>
 
 ---
+关于此 Fork (About This Fork)
+本项目是 SillyTavern/SillyTavern 的一个fork版本。
+
+本项目的所有修改和分发均遵循原始项目的 AGPL-3.0 许可证。你可以在仓库根目录的 LICENSE 文件中查看许可证全文。
 
 SillyTavern provides a single unified interface for many LLM APIs (KoboldAI/CPP, Horde, NovelAI, Ooba, Tabby, OpenAI, OpenRouter, Claude, Mistral and more), a mobile-friendly layout, Visual Novel Mode, Automatic1111 & ComfyUI API image generation integration, TTS, WorldInfo (lorebooks), customizable UI, auto-translate, more prompt options than you'd ever want or need, and endless growth potential via third-party extensions.
 
