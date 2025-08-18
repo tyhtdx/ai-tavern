@@ -227,6 +227,26 @@ app.post('/api/ping', (request, response) => {
     response.sendStatus(204);
 });
 
+// Godot API接收端点
+app.post('/api/v1/send_message', (request, response) => {
+    const { user_input } = request.body;
+
+    if (user_input === undefined) {
+        return response.status(400).json({ status: 'error', message: 'user_input field is missing' });
+    }
+
+    // 占位函数，实际逻辑待实现
+    handleIncomingMessageFromGodot(user_input);
+
+    response.status(200).json({ status: 'success', message: 'Message received' });
+});
+
+function handleIncomingMessageFromGodot(userInput) {
+    console.log(`Received message from Godot: ${userInput}`);
+    // 在这里添加处理Godot消息的实际逻辑
+    // 例如，将消息转发给LLM
+}
+
 // File uploads
 const uploadsPath = path.join(cliArgs.dataRoot, UPLOADS_DIRECTORY);
 app.use(multer({ dest: uploadsPath, limits: { fieldSize: 500 * 1024 * 1024 } }).single('avatar'));
@@ -239,6 +259,27 @@ app.get('/version', async function (_, response) {
 
 redirectDeprecatedEndpoints(app);
 setupPrivateEndpoints(app);
+
+async function forwardReplyToAIServiceHub(llmReplyText) {
+    const aiServiceHubUrl = 'http://ai-service-hub.internal/v1/game/parse-intent';
+    try {
+        const response = await fetch(aiServiceHubUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text: llmReplyText }),
+        });
+
+        if (response.ok) {
+            console.log('Successfully forwarded LLM reply to AI Service Hub.');
+        } else {
+            console.error(`Failed to forward LLM reply to AI Service Hub: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error forwarding LLM reply to AI Service Hub:', error);
+    }
+}
 
 /**
  * Tasks that need to be run before the server starts listening.
