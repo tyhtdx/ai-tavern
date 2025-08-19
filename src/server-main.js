@@ -18,6 +18,7 @@ import bodyParser from 'body-parser';
 // local library imports
 import './fetch-patch.js';
 import { serverDirectory } from './server-directory.js';
+import { csrfExemptions } from './csrf-exemptions.js';
 
 import { serverEvents, EVENT_NAMES } from './server-events.js';
 import { loadPlugins } from './plugin-loader.js';
@@ -146,7 +147,7 @@ app.use(setUserDataMiddleware);
             getTokenFromState: (req) => {
                 if (!req.session) {
                     console.error('(CSRF error) getTokenFromState: Session object not initialized');
-                    return;
+                    return undefined; // Return undefined if session is not initialized
                 }
                 return req.session.csrfToken;
             },
@@ -161,28 +162,33 @@ app.use(setUserDataMiddleware);
                 req.session.csrfToken = token;
             },
             size: 32,
-            // 移除 excludeUrls 和 excludeMethods，因为路由已移到 CSRF 之前
+            // 恢复手动处理 ignoreUrls，因为类型定义问题
         });
 
-    app.get('/csrf-token', (req, res) => {
-        res.json({
-            'token': csrfSyncProtection.generateToken(req),
+        app.get('/csrf-token', (req, res) => {
+            res.json({
+                'token': csrfSyncProtection.generateToken(req),
+            });
         });
-    });
 
-    // Customize the error message
-    csrfSyncProtection.invalidCsrfTokenError .message = color.red('Invalid CSRF token. Please refresh the page and try again.');
-    csrfSyncProtection.invalidCsrfTokenError.stack = undefined;
+        // Customize the error message
+        csrfSyncProtection.invalidCsrfTokenError.message = color.red('Invalid CSRF token. Please refresh the page and try again.');
+        csrfSyncProtection.invalidCsrfTokenError.stack = undefined;
 
-    app.use(csrfSyncProtection.csrfSynchronisedProtection);
-} else {
-    console.warn('\nCSRF protection is disabled. This will make your server vulnerable to CSRF attacks.\n');
-    app.get('/csrf-token', (req, res) => {
-        res.json({
-            'token': 'disabled',
+        app.use((req, res, next) => {
+            if (csrfExemptions.includes(req.path)) {
+                return next();
+            }
+            csrfSyncProtection.csrfSynchronisedProtection(req, res, next);
         });
-    });
-}
+    } else {
+        console.warn('\nCSRF protection is disabled. This will make your server vulnerable to CSRF attacks.\n');
+        app.get('/csrf-token', (req, res) => {
+            res.json({
+                'token': 'disabled',
+            });
+        });
+    }
 
 // Static files
 // Host index page
@@ -217,6 +223,12 @@ app.use(express.static(path.join(serverDirectory, 'public'), {}));
 
 // Public API
 app.use('/api/users', usersPublicRouter);
+const chatCompletionsModule = await import('./endpoints/backends/chat-completions.js');
+const chatCompletionsRouter = chatCompletionsModule.router ?? chatCompletionsModule.default?.router ?? chatCompletionsModule.default ?? chatCompletionsModule;
+if (!chatCompletionsRouter) {
+    throw new Error('Failed to load chat-completions router from ./endpoints/backends/chat-completions.js');
+}
+app.use('/api/chat', chatCompletionsRouter);
 
 // Everything below this line requires authentication
 app.use(requireLoginMiddleware);
@@ -241,26 +253,6 @@ app.get('/version', async function (_, response) {
 redirectDeprecatedEndpoints(app);
 setupPrivateEndpoints(app);
 
-async function forwardReplyToAIServiceHub(llmReplyText) {
-    const aiServiceHubUrl = 'http://ai-service-hub.internal/v1/game/parse-intent';
-    try {
-        const response = await fetch(aiServiceHubUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text: llmReplyText }),
-        });
-
-        if (response.ok) {
-            console.log('Successfully forwarded LLM reply to AI Service Hub.');
-        } else {
-            console.error(`Failed to forward LLM reply to AI Service Hub: ${response.status} ${response.statusText}`);
-        }
-    } catch (error) {
-        console.error('Error forwarding LLM reply to AI Service Hub:', error);
-    }
-}
 
 /**
  * Tasks that need to be run before the server starts listening.
