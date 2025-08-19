@@ -1,0 +1,7 @@
+{
+  "name": "Godot Middleware",
+  "description": "提供API端点给Godot客户端，并实现与AI Service Hub的逻辑交互。",
+  "author": "AI Platform Team",
+  "version": "1.0.0",
+  "tags": ["API", "Integration", "Godot"]
+}

@@ -141,27 +141,28 @@ app.use(cookieSession({
 app.use(setUserDataMiddleware);
 
 // CSRF Protection //
-if (!cliArgs.disableCsrf) {
-    const csrfSyncProtection = csrfSync({
-        getTokenFromState: (req) => {
-            if (!req.session) {
-                console.error('(CSRF error) getTokenFromState: Session object not initialized');
-                return;
-            }
-            return req.session.csrfToken;
-        },
-        getTokenFromRequest: (req) => {
-            return req.headers['x-csrf-token']?.toString();
-        },
-        storeTokenInState: (req, token) => {
-            if (!req.session) {
-                console.error('(CSRF error) storeTokenInState: Session object not initialized');
-                return;
-            }
-            req.session.csrfToken = token;
-        },
-        size: 32,
-    });
+    if (!cliArgs.disableCsrf) {
+        const csrfSyncProtection = csrfSync({
+            getTokenFromState: (req) => {
+                if (!req.session) {
+                    console.error('(CSRF error) getTokenFromState: Session object not initialized');
+                    return;
+                }
+                return req.session.csrfToken;
+            },
+            getTokenFromRequest: (req) => {
+                return req.headers['x-csrf-token']?.toString();
+            },
+            storeTokenInState: (req, token) => {
+                if (!req.session) {
+                    console.error('(CSRF error) storeTokenInState: Session object not initialized');
+                    return;
+                }
+                req.session.csrfToken = token;
+            },
+            size: 32,
+            // 移除 excludeUrls 和 excludeMethods，因为路由已移到 CSRF 之前
+        });
 
     app.get('/csrf-token', (req, res) => {
         res.json({
@@ -170,7 +171,7 @@ if (!cliArgs.disableCsrf) {
     });
 
     // Customize the error message
-    csrfSyncProtection.invalidCsrfTokenError.message = color.red('Invalid CSRF token. Please refresh the page and try again.');
+    csrfSyncProtection.invalidCsrfTokenError .message = color.red('Invalid CSRF token. Please refresh the page and try again.');
     csrfSyncProtection.invalidCsrfTokenError.stack = undefined;
 
     app.use(csrfSyncProtection.csrfSynchronisedProtection);
@@ -226,26 +227,6 @@ app.post('/api/ping', (request, response) => {
 
     response.sendStatus(204);
 });
-
-// Godot API接收端点
-app.post('/api/v1/send_message', (request, response) => {
-    const { user_input } = request.body;
-
-    if (user_input === undefined) {
-        return response.status(400).json({ status: 'error', message: 'user_input field is missing' });
-    }
-
-    // 占位函数，实际逻辑待实现
-    handleIncomingMessageFromGodot(user_input);
-
-    response.status(200).json({ status: 'success', message: 'Message received' });
-});
-
-function handleIncomingMessageFromGodot(userInput) {
-    console.log(`Received message from Godot: ${userInput}`);
-    // 在这里添加处理Godot消息的实际逻辑
-    // 例如，将消息转发给LLM
-}
 
 // File uploads
 const uploadsPath = path.join(cliArgs.dataRoot, UPLOADS_DIRECTORY);
