@@ -46,10 +46,10 @@ access.log
 /cache/
 public/css/user.css
 public/error/
-/plugins/
+#/plugins/
 /data
 /default/scaffold
-public/scripts/extensions/third-party
+#public/scripts/extensions/third-party
 /certs
 .aider*
 .env

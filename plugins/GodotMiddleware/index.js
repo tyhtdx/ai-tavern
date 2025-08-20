@@ -1,89 +1,92 @@
-const { csrfExemptions } = require('../../src/csrf-exemptions.js');
+// 我们不再需要任何 'require' 来导入SillyTavern的核心模块
+const fetch = require('node-fetch');
 
-// 在全局范围声明一个变量，用于存储我们动态导入的核心函数
-let generateChatCompletion;
+const PLUGIN_ID = 'godot-middleware';
 
-// 必需的init函数
-async function init(router) {
-    // 1. 动态加载SillyTavern的核心聊天函数
+// 核心编排函数，但现在它直接从 req 对象获取设置
+async function handleGodotRequest(req, character_uid, user_input) {
     try {
-        const chatCompletionsModule = await import('../../src/endpoints/backends/chat-completions.js');
-        generateChatCompletion = chatCompletionsModule.generateChatCompletion;
-        console.log('[Godot Middleware] Core function "generateChatCompletion" loaded successfully.');
-    } catch (error) {
-        console.error('[Godot Middleware] Failed to load core chat function:', error);
-        return;
-    }
+        // SillyTavern的中间件已经将用户的所有设置附加到了req.user.settings对象上
+        const pluginSettings = req.user.settings; // <-- 从请求中直接获取设置
 
-    // 2. 注册CSRF豁免
-    csrfExemptions.push('/api/plugins/godot-middleware/send_message');
-
-    // 3. 注册我们的API端点
-    router.post('/send_message', async (req, res) => {
-        if (typeof generateChatCompletion !== 'function') {
-            return res.status(500).json({ status: 'error', message: '核心聊天功能初始化失败' });
+        const { aigc_api_url, nakama_api_url, ai_service_url, default_temperature, default_max_tokens } = pluginSettings;
+        if (!aigc_api_url || !nakama_api_url || !ai_service_url) {
+            throw new Error('插件配置不完整，请检查相关API地址。');
         }
 
+        const [characterData, nakamaStatus] = await Promise.all([
+            fetch(`${aigc_api_url}/characters/${character_uid}`).then(res => res.json()),
+            fetch(`${nakama_api_url}/status/${character_uid}`).then(res => res.json()),
+        ]);
+
+        const fullContext = {
+            character_info: characterData,
+            nakama_status: nakamaStatus,
+            user_input: user_input,
+            chat_history: [{ role: 'user', content: user_input }],
+            temperature: default_temperature,
+            max_tokens: default_max_tokens,
+        };
+
+        const aiServiceResponse = await fetch(ai_service_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fullContext),
+        });
+
+        if (!aiServiceResponse.ok) {
+            const errorText = await aiServiceResponse.text();
+            throw new Error(`AI Service call failed: ${aiServiceResponse.statusText} - ${errorText}`);
+        }
+
+        const aiServiceJson = await aiServiceResponse.json();
+
+        if (aiServiceJson && aiServiceJson.reply) {
+            return { success: true, reply: aiServiceJson.reply };
+        } else {
+            throw new Error('AI Service 返回的响应格式不正确。');
+        }
+    } catch (error) {
+        console.error(`[Godot Middleware] 编排错误: ${error.message}`);
+        throw error;
+    }
+}
+
+// init函数现在只接收router，这是我们已验证的正确签名
+const init = async (router) => {
+    router.post('/send_message', async (req, res) => {
         try {
-            // 4. 从Godot的请求中解析输入
             const { character_uid, user_input } = req.body;
             if (!character_uid || !user_input) {
-                return res.status(400).json({ status: 'error', message: 'character_uid 和 user_input 字段都是必需的' });
+                return res.status(400).json({ success: false, message: '缺少 character_uid 或 user_input。' });
             }
-            console.log(`[Godot Middleware] 收到Godot请求，角色UID: ${character_uid}, 用户输入: ${user_input}`);
 
-            // 5. 构建符合 generateChatCompletion 规范的请求对象
-            const mockRequest = {
-                body: {
-                    chat_completion_source: "openai", // 假设后端为OpenAI兼容模式
-                    model: "gpt-3.5-turbo", // 示例模型，后续可从角色卡或请求中动态获取
-                    messages: [
-                        { "role": "system", "content": `你正在扮演名为 ${character_uid} 的角色。` },
-                        { "role": "user", "content": user_input }
-                    ],
-                    stream: false,
-                    max_tokens: 150,
-                    temperature: 0.7,
-                },
-                socket: { // 模拟socket对象以兼容
-                    removeAllListeners: () => {},
-                    on: () => {},
-                },
-                user: req.user, // 传递真实的用户信息，用于读取密钥等
-            };
-
-            // 6. 调用SillyTavern的核心函数获取结果
-            const result = await generateChatCompletion(mockRequest);
-
-            // 7. 从结果中提取AI回复文本
-            const replyText = result?.choices?.[0]?.message?.content ?? 'AI未能生成有效的回复。';
-            console.log(`[Godot Middleware] 成功获得LLM回复: ${replyText}`);
-
-            // 8. 将提取出的文本返回给Godot
-            res.json({ status: 'success', reply: replyText });
-
+            // 将完整的 req 对象传递给核心函数，以便它能访问用户设置
+            const result = await handleGodotRequest(req, character_uid, user_input);
+            res.json(result);
         } catch (error) {
-            console.error(`[Godot Middleware] 处理请求时发生错误:`, error);
-            res.status(500).json({ status: 'error', message: '内部服务器错误' });
+            res.status(500).json({ success: false, message: error.message });
         }
     });
 
     console.log('[Godot Middleware] 插件初始化完成');
     console.log('[Godot Middleware] API端点: POST /api/plugins/godot-middleware/send_message');
-}
+};
 
-async function exit() {
-    console.log('[Godot Middleware] 插件正在卸载...');
-}
+const exit = async () => {
+    console.log('GodotMiddleware 插件正在退出。');
+};
 
 const info = {
     id: 'godot-middleware',
-    name: 'Godot Middleware',
-    description: '提供API端点给Godot客户端，并实现与AI Service Hub的逻辑交互。'
+    name: 'GodotMiddleware',
+    description: '连接 Godot、AIGC Bounty 平台和 Nakama 游戏服务器的核心编排器。',
+    version: '1.0.0',
+    author: 'Cline',
 };
 
 module.exports = {
     init,
     exit,
-    info
+    info,
 };

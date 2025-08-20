@@ -1,0 +1,7 @@
+{
+  "aigc_api_url": "http://aigc-bounty-platform.internal/api/v1",
+  "nakama_api_url": "http://nakama-server.internal/api/v1",
+  "ai_service_url": "http://ai-service-hub.internal/api/v1",
+  "default_temperature": 0.7,
+  "default_max_tokens": 200
+}

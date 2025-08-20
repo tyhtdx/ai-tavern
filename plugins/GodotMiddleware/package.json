@@ -1,0 +1,7 @@
+{
+  "name": "sillytavern-godot-middleware",
+  "version": "1.0.0",
+  "description": "SillyTavern服务器插件，作为连接Godot、AIGC Bounty平台和Nakama游戏服务器的核心编排器，并提供灵活的UI配置。",
+  "main": "index.js",
+  "author": "Cline"
+}

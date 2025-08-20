@@ -1,0 +1,35 @@
+[
+  {
+    "id": "aigc_api_url",
+    "name": "AIGC Bounty API地址",
+    "type": "text",
+    "default": "http://localhost:3001/api/aigc"
+  },
+  {
+    "id": "nakama_api_url",
+    "name": "Nakama服务器API地址",
+    "type": "text",
+    "default": "http://localhost:7350/v2"
+  },
+  {
+    "id": "ai_service_url",
+    "name": "AI Service (Crew) API地址",
+    "type": "text",
+    "default": "http://localhost:5000/ai-service"
+  },
+  {
+    "id": "default_temperature",
+    "name": "默认Temperature",
+    "type": "range",
+    "min": 0,
+    "max": 2,
+    "step": 0.05,
+    "default": 0.7
+  },
+  {
+    "id": "default_max_tokens",
+    "name": "默认Max Tokens",
+    "type": "number",
+    "default": 200
+  }
+]
