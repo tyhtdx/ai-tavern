@@ -1,7 +1,9 @@
 {
-  "aigc_api_url": "http://aigc-bounty-platform.internal/api/v1",
-  "nakama_api_url": "http://nakama-server.internal/api/v1",
-  "ai_service_url": "http://ai-service-hub.internal/api/v1",
+  "custom_openai_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+  "aigc_api_url": "http://localhost:3001/api/v1",
+  "nakama_api_url": "http://localhost:7350/v2",
+  "ai_service_url": "http://localhost:8010/ai-service",
+  "proxy_password": "163aeeda8cda415f813d1f85e0161c7f.f2iYatzq9EnFA1sn",
   "default_temperature": 0.7,
-  "default_max_tokens": 200
+  "default_max_tokens": 8192
 }
