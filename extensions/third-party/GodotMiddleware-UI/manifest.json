@@ -1,0 +1,7 @@
+{
+  "display_name": "Godot Middleware Settings",
+  "js": "script.js",
+  "author": "Cline",
+  "version": "1.0.0",
+  "description": "Godot Middleware 服务器插件的 UI 设置面板。"
+}

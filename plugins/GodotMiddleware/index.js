@@ -1,13 +1,19 @@
-// 我们不再需要任何 'require' 来导入SillyTavern的核心模块
-const fetch = require('node-fetch');
+import fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fetch from 'node-fetch';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PLUGIN_ID = 'godot-middleware';
 
 // 核心编排函数，但现在它直接从 req 对象获取设置
 async function handleGodotRequest(req, character_uid, user_input) {
     try {
-        // SillyTavern的中间件已经将用户的所有设置附加到了req.user.settings对象上
-        const pluginSettings = req.user.settings; // <-- 从请求中直接获取设置
+        const configPath = path.join(__dirname, 'config.json');
+        const configContent = await fs.readFile(configPath, 'utf8');
+        const pluginSettings = JSON.parse(configContent);
 
         const { aigc_api_url, nakama_api_url, ai_service_url, default_temperature, default_max_tokens } = pluginSettings;
         if (!aigc_api_url || !nakama_api_url || !ai_service_url) {
@@ -69,6 +75,29 @@ const init = async (router) => {
         }
     });
 
+    router.get('/settings', async (req, res) => {
+        try {
+            const configPath = path.join(__dirname, 'config.json');
+            const configContent = await fs.readFile(configPath, 'utf8');
+            res.json(JSON.parse(configContent));
+        } catch (error) {
+            console.error(`[Godot Middleware] 读取配置失败: ${error.message}`);
+            res.status(500).json({ success: false, message: '读取配置失败。' });
+        }
+    });
+
+    router.post('/settings', async (req, res) => {
+        try {
+            const configPath = path.join(__dirname, 'config.json');
+            const newConfig = req.body;
+            await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2), 'utf8');
+            res.json({ success: true, message: '配置已成功保存。' });
+        } catch (error) {
+            console.error(`[Godot Middleware] 保存配置失败: ${error.message}`);
+            res.status(500).json({ success: false, message: '保存配置失败。' });
+        }
+    });
+
     console.log('[Godot Middleware] 插件初始化完成');
     console.log('[Godot Middleware] API端点: POST /api/plugins/godot-middleware/send_message');
 };
@@ -85,7 +114,7 @@ const info = {
     author: 'Cline',
 };
 
-module.exports = {
+export {
     init,
     exit,
     info,
